@@ -44,23 +44,6 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
 
     _attr_has_entity_name = True
     _attr_name = "TuneFree Player"
-    _attr_supported_features = (
-        MediaPlayerEntityFeature.PLAY
-        | MediaPlayerEntityFeature.PAUSE
-        | MediaPlayerEntityFeature.STOP
-        | MediaPlayerEntityFeature.PLAY_MEDIA
-        | MediaPlayerEntityFeature.VOLUME_SET
-        | MediaPlayerEntityFeature.VOLUME_STEP
-        | MediaPlayerEntityFeature.VOLUME_MUTE
-        | MediaPlayerEntityFeature.BROWSE_MEDIA
-        | MediaPlayerEntityFeature.NEXT_TRACK
-        | MediaPlayerEntityFeature.PREVIOUS_TRACK
-        | MediaPlayerEntityFeature.SEEK
-        | MediaPlayerEntityFeature.SHUFFLE_SET
-        | MediaPlayerEntityFeature.REPEAT_SET
-        | MediaPlayerEntityFeature.TURN_ON
-        | MediaPlayerEntityFeature.TURN_OFF
-    )
 
     def __init__(
         self,
@@ -94,6 +77,8 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._playlist: list[dict] = []
         self._playlist_index: int = 0
         self._last_state: str | None = None
+        self._shuffle: bool = False
+        self._repeat: str = "off"  # off, all, one
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass."""
@@ -122,11 +107,18 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         if (
             previous_state == "playing" 
             and current_state == "idle" 
-            and self._playlist 
-            and self._playlist_index < len(self._playlist) - 1
+            and self._playlist
         ):
-            self._playlist_index += 1
-            self.hass.async_create_task(self._play_current_track())
+            if self._repeat == "one":
+                # Repeat current track
+                self.hass.async_create_task(self._play_current_track())
+            elif self._playlist_index < len(self._playlist) - 1:
+                self._playlist_index += 1
+                self.hass.async_create_task(self._play_current_track())
+            elif self._repeat == "all":
+                # Loop back to start
+                self._playlist_index = 0
+                self.hass.async_create_task(self._play_current_track())
         
         self.async_write_ha_state()
 
@@ -146,6 +138,39 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
             "buffering": MediaPlayerState.BUFFERING,
         }
         return state_map.get(target_state.state, MediaPlayerState.IDLE)
+
+    @property
+    def supported_features(self) -> MediaPlayerEntityFeature:
+        """Return supported features based on target player."""
+        # TuneFree's own features
+        features = (
+            MediaPlayerEntityFeature.PLAY
+            | MediaPlayerEntityFeature.PAUSE
+            | MediaPlayerEntityFeature.STOP
+            | MediaPlayerEntityFeature.PLAY_MEDIA
+            | MediaPlayerEntityFeature.BROWSE_MEDIA
+            | MediaPlayerEntityFeature.NEXT_TRACK
+            | MediaPlayerEntityFeature.PREVIOUS_TRACK
+            | MediaPlayerEntityFeature.SHUFFLE_SET
+            | MediaPlayerEntityFeature.REPEAT_SET
+        )
+        # Add target player's volume/seek features
+        target_state = self.hass.states.get(self._target_player)
+        if target_state:
+            target_features = target_state.attributes.get("supported_features", 0)
+            if target_features & MediaPlayerEntityFeature.VOLUME_SET:
+                features |= MediaPlayerEntityFeature.VOLUME_SET
+            if target_features & MediaPlayerEntityFeature.VOLUME_STEP:
+                features |= MediaPlayerEntityFeature.VOLUME_STEP
+            if target_features & MediaPlayerEntityFeature.VOLUME_MUTE:
+                features |= MediaPlayerEntityFeature.VOLUME_MUTE
+            if target_features & MediaPlayerEntityFeature.SEEK:
+                features |= MediaPlayerEntityFeature.SEEK
+            if target_features & MediaPlayerEntityFeature.TURN_ON:
+                features |= MediaPlayerEntityFeature.TURN_ON
+            if target_features & MediaPlayerEntityFeature.TURN_OFF:
+                features |= MediaPlayerEntityFeature.TURN_OFF
+        return features
 
     @property
     def volume_level(self) -> float | None:
@@ -552,19 +577,25 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
         """Set shuffle mode."""
-        await self.hass.services.async_call(
-            "media_player",
-            "shuffle_set",
-            {"entity_id": self._target_player, "shuffle": shuffle},
-        )
+        import random
+        self._shuffle = shuffle
+        if shuffle and self._playlist:
+            # Shuffle the playlist but keep current song
+            current_song = self._playlist[self._playlist_index] if self._playlist_index < len(self._playlist) else None
+            random.shuffle(self._playlist)
+            if current_song:
+                # Move current song to current index
+                try:
+                    idx = self._playlist.index(current_song)
+                    self._playlist[idx], self._playlist[self._playlist_index] = self._playlist[self._playlist_index], self._playlist[idx]
+                except ValueError:
+                    pass
+        self.async_write_ha_state()
 
     async def async_set_repeat(self, repeat: str) -> None:
         """Set repeat mode."""
-        await self.hass.services.async_call(
-            "media_player",
-            "repeat_set",
-            {"entity_id": self._target_player, "repeat": repeat},
-        )
+        self._repeat = repeat
+        self.async_write_ha_state()
 
     async def async_turn_on(self) -> None:
         """Turn on the player."""
@@ -613,18 +644,12 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
     @property
     def shuffle(self) -> bool | None:
         """Return true if shuffle is enabled."""
-        target_state = self.hass.states.get(self._target_player)
-        if target_state:
-            return target_state.attributes.get("shuffle")
-        return None
+        return self._shuffle
 
     @property
     def repeat(self) -> str | None:
         """Return the repeat mode."""
-        target_state = self.hass.states.get(self._target_player)
-        if target_state:
-            return target_state.attributes.get("repeat")
-        return None
+        return self._repeat
 
     async def async_browse_media(
         self,

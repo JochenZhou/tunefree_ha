@@ -1,6 +1,10 @@
-# TuneFree - Home Assistant 音乐集成
+# TuneFree_HA - Home Assistant 音乐集成
 
-TuneFree 是一个 Home Assistant 自定义集成，支持多平台音乐搜索、播放和歌词显示。
+TuneFree_HA 是一个 Home Assistant 自定义集成，支持多平台音乐搜索、播放和歌词显示。
+
+> 🙏 本项目基于 [TuneFree API](https://api.tunefree.fun/) 服务，感谢 API 作者的无私分享！
+> 
+> 详情请参阅：[Linux.do 论坛讨论](https://linux.do/t/topic/1326425)
 
 ## 功能特性
 
@@ -16,7 +20,7 @@ TuneFree 是一个 Home Assistant 自定义集成，支持多平台音乐搜索�
 ### HACS 安装（推荐）
 
 1. 在 HACS 中点击右上角菜单，选择「自定义存储库」
-2. 添加仓库地址：`https://github.com/JochenZhou/TuneFree-HA`
+2. 添加仓库地址：`https://github.com/JochenZhou/tunefree_ha`
 3. 类别选择「Integration」
 4. 点击添加，然后搜索 TuneFree 安装
 5. 重启 Home Assistant
@@ -142,3 +146,6 @@ card_height: 400
 ## 许可证
 
 MIT License
+## 致谢
+
+- API 服务：[TuneFree API](https://api.tunefree.fun/)
