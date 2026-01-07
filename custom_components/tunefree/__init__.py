@@ -80,28 +80,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         try:
             from homeassistant.components.lovelace import DOMAIN as LOVELACE_DOMAIN
             from homeassistant.components.lovelace.resources import ResourceStorageCollection
-            from homeassistant.loader import async_get_integration
-            
-            integration = await async_get_integration(hass, DOMAIN)
-            version = integration.version or "1.0.0"
-            
+
             if LOVELACE_DOMAIN in hass.data:
                 lovelace = hass.data[LOVELACE_DOMAIN]
                 if hasattr(lovelace, "resources") and isinstance(lovelace.resources, ResourceStorageCollection):
                     resources = lovelace.resources
-                    url_base = "/tunefree/tunefree-lyrics-card.js"
-                    url = f"{url_base}?v={version}"
-                    # Check if already registered (match base url)
-                    existing = [r for r in resources.async_items() if r.get("url", "").startswith(url_base)]
-                    if existing:
-                        # Update version if changed
-                        for r in existing:
-                            if r.get("url") != url:
-                                await resources.async_update_item(r["id"], {"url": url, "res_type": "module"})
-                                _LOGGER.info("TuneFree lyrics card resource updated to v%s", version)
-                    else:
+                    url = "/tunefree/tunefree-lyrics-card.js"
+                    # Check if already registered (exact match only)
+                    existing = [r for r in resources.async_items() if r.get("url") == url]
+                    if not existing:
                         await resources.async_create_item({"url": url, "res_type": "module"})
-                        _LOGGER.info("TuneFree lyrics card resource registered v%s", version)
+                        _LOGGER.info("TuneFree lyrics card resource registered")
         except Exception as e:
             _LOGGER.debug("Could not auto-register lovelace resource: %s", e)
         
