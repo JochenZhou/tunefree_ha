@@ -1,0 +1,192 @@
+play_music:
+  name: 播放音乐
+  description: 搜索并播放单首音乐
+  fields:
+    keyword:
+      name: 关键词
+      required: true
+      selector:
+        text:
+    entity_id:
+      name: 媒体播放器
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    source:
+      name: 搜索渠道
+      required: false
+      selector:
+        select:
+          options:
+            - value: "netease"
+              label: "网易云音乐"
+            - value: "kuwo"
+              label: "酷我音乐"
+            - value: "qq"
+              label: "QQ音乐"
+            - value: "all"
+              label: "全平台搜索"
+
+search_music:
+  name: 搜索音乐
+  description: 搜索音乐返回结果（MCP/AI用）
+  fields:
+    keyword:
+      name: 关键词
+      required: true
+      selector:
+        text:
+    limit:
+      name: 数量
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 50
+    source:
+      name: 搜索渠道
+      required: false
+      selector:
+        select:
+          options:
+            - value: "netease"
+              label: "网易云音乐"
+            - value: "kuwo"
+              label: "酷我音乐"
+            - value: "qq"
+              label: "QQ音乐"
+            - value: "all"
+              label: "全平台搜索"
+
+play_toplist:
+  name: 播放榜单
+  description: 播放指定榜单的歌曲
+  fields:
+    toplist_id:
+      name: 榜单 ID
+      required: true
+      selector:
+        text:
+    entity_id:
+      name: 媒体播放器
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    source:
+      name: 音乐平台
+      default: "netease"
+      selector:
+        select:
+          options:
+            - value: "netease"
+              label: "网易云音乐"
+            - value: "kuwo"
+              label: "酷我音乐"
+            - value: "qq"
+              label: "QQ音乐"
+    shuffle:
+      name: 随机播放
+      default: false
+      selector:
+        boolean:
+
+play_search_list:
+  name: 播放搜索列表
+  description: 搜索音乐并播放整个结果列表
+  fields:
+    keyword:
+      name: 关键词
+      required: true
+      selector:
+        text:
+    entity_id:
+      name: 媒体播放器
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    limit:
+      name: 歌曲数量
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 50
+    source:
+      name: 搜索渠道
+      required: false
+      selector:
+        select:
+          options:
+            - value: "netease"
+              label: "网易云音乐"
+            - value: "kuwo"
+              label: "酷我音乐"
+            - value: "qq"
+              label: "QQ音乐"
+            - value: "all"
+              label: "全平台搜索"
+    shuffle:
+      name: 随机播放
+      default: false
+      selector:
+        boolean:
+
+play_playlist:
+  name: 播放歌单
+  description: 导入并播放指定歌单
+  fields:
+    playlist_id:
+      name: 歌单 ID
+      description: 从分享链接获取的歌单ID
+      required: true
+      example: "123456789"
+      selector:
+        text:
+    entity_id:
+      name: 媒体播放器
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    source:
+      name: 音乐平台
+      default: "netease"
+      selector:
+        select:
+          options:
+            - value: "netease"
+              label: "网易云音乐"
+            - value: "kuwo"
+              label: "酷我音乐"
+            - value: "qq"
+              label: "QQ音乐"
+    shuffle:
+      name: 随机播放
+      default: false
+      selector:
+        boolean:
+
+get_lyrics:
+  name: 获取歌词
+  description: 获取指定歌曲的歌词
+  fields:
+    song_id:
+      name: 歌曲 ID
+      required: true
+      selector:
+        text:
+    source:
+      name: 音乐平台
+      default: "netease"
+      selector:
+        select:
+          options:
+            - value: "netease"
+              label: "网易云音乐"
+            - value: "kuwo"
+              label: "酷我音乐"
+            - value: "qq"
+              label: "QQ音乐"

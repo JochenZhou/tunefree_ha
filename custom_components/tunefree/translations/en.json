@@ -1,0 +1,64 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Configure TuneFree",
+                "description": "Enter the TuneHub API URL",
+                "data": {
+                    "api_url": "API URL"
+                }
+            },
+            "player": {
+                "title": "Player and Search Settings",
+                "description": "Select target player and default search source",
+                "data": {
+                    "target_player": "Target Media Player",
+                    "default_source": "Default Search Source"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Cannot connect to API"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "TuneFree Settings",
+                "description": "Select an option to configure",
+                "menu_options": {
+                    "settings": "Basic Settings",
+                    "import_playlist": "Import Playlist",
+                    "manage_playlists": "Manage Playlists"
+                }
+            },
+            "settings": {
+                "title": "Basic Settings",
+                "description": "Configure player and search source",
+                "data": {
+                    "target_player": "Target Media Player",
+                    "default_source": "Default Search Source"
+                }
+            },
+            "import_playlist": {
+                "title": "Import Playlist",
+                "description": "Enter playlist URL or ID",
+                "data": {
+                    "playlist_url": "Playlist URL or ID",
+                    "source": "Music Platform"
+                }
+            },
+            "manage_playlists": {
+                "title": "Manage Playlists",
+                "description": "View and delete imported playlists",
+                "data": {
+                    "remove_playlists": "Select playlists to remove"
+                }
+            }
+        },
+        "error": {
+            "invalid_playlist": "Invalid playlist URL or ID",
+            "playlist_not_found": "Playlist not found"
+        }
+    }
+}

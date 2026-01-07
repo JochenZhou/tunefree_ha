@@ -1,0 +1,64 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "配置 TuneFree",
+                "description": "输入 TuneHub 服务的 API 地址",
+                "data": {
+                    "api_url": "API 地址"
+                }
+            },
+            "player": {
+                "title": "播放器和搜索设置",
+                "description": "选择目标播放器和默认搜索渠道",
+                "data": {
+                    "target_player": "目标媒体播放器",
+                    "default_source": "默认搜索渠道"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "无法连接到 API，请检查地址是否正确"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "TuneFree 设置",
+                "description": "选择要配置的选项",
+                "menu_options": {
+                    "settings": "基本设置",
+                    "import_playlist": "导入歌单",
+                    "manage_playlists": "管理歌单"
+                }
+            },
+            "settings": {
+                "title": "基本设置",
+                "description": "配置播放器和搜索渠道",
+                "data": {
+                    "target_player": "目标媒体播放器",
+                    "default_source": "默认搜索渠道"
+                }
+            },
+            "import_playlist": {
+                "title": "导入歌单",
+                "description": "输入歌单链接或ID",
+                "data": {
+                    "playlist_url": "歌单链接或ID",
+                    "source": "音乐平台"
+                }
+            },
+            "manage_playlists": {
+                "title": "管理歌单",
+                "description": "查看和删除已导入的歌单",
+                "data": {
+                    "remove_playlists": "选择要删除的歌单"
+                }
+            }
+        },
+        "error": {
+            "invalid_playlist": "无效的歌单链接或ID",
+            "playlist_not_found": "找不到该歌单，请检查ID和平台是否正确"
+        }
+    }
+}
