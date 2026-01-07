@@ -40,6 +40,14 @@ TuneFree_HA 是一个 Home Assistant 自定义集成，支持多平台音乐搜�
 | 默认音乐源 | netease/qq/kuwo | 否 |
 | 目标播放器 | 用于播放的媒体播放器实体 | 否 |
 
+### 导入歌单
+
+1. 进入 Home Assistant 设置 → 设备与服务 → TuneFree
+2. 点击「配置」按钮
+3. 选择音乐源（网易云/QQ音乐/酷我）
+4. 输入歌单 ID（从歌单链接中获取）
+5. 点击提交，歌单将出现在媒体浏览器中
+
 ## 服务
 
 ### tunefree.play_music
