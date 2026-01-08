@@ -20,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 
-from .const import DOMAIN, CONF_TARGET_PLAYER
+from .const import DOMAIN, CONF_TARGET_PLAYER, CONF_IS_XIAOAI_SPEAKER
 from .api import TuneFreeAPI
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,13 +58,14 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._entry = entry
         self._api = api
         self._target_player = target_player
+        self._is_xiaoai_speaker = entry.data.get(CONF_IS_XIAOAI_SPEAKER, False)
         self._attr_unique_id = f"{entry.entry_id}_media_player"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name="TuneFree Service",
             manufacturer="TuneHub",
         )
-        
+
         # Current media info
         self._media_title: str | None = None
         self._media_artist: str | None = None
@@ -73,7 +74,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._current_song_id: str | None = None
         self._current_source: str | None = None
         self._lyrics: str | None = None
-        
+
         # Playlist queue
         self._playlist: list[dict] = []
         self._playlist_index: int = 0
@@ -81,16 +82,77 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._shuffle: bool = False
         self._repeat: str = "off"  # off, all, one
         self._advancing: bool = False  # Prevent multiple auto-advance
+        self._position_check_unsub = None  # Position check timer for Xiaoai
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass."""
         await super().async_added_to_hass()
-        
+
         # Track state changes of the target player
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass, [self._target_player], self._async_target_state_changed
             )
+        )
+
+        # Start position monitoring for Xiaoai speaker
+        if self._is_xiaoai_speaker:
+            self._start_position_monitoring()
+
+    def _start_position_monitoring(self) -> None:
+        """Start monitoring playback position for auto-advance."""
+        if self._position_check_unsub:
+            self._position_check_unsub()
+
+        import homeassistant.util.dt as dt_util
+        from homeassistant.helpers.event import async_track_time_interval
+        from datetime import timedelta
+
+        async def check_position(now):
+            """Check if song is near end and advance if needed."""
+            if not self._playlist or self._advancing:
+                return
+
+            target_state = self.hass.states.get(self._target_player)
+            if not target_state or target_state.state != "playing":
+                return
+
+            position = target_state.attributes.get("media_position")
+            duration = target_state.attributes.get("media_duration")
+            position_updated_at = target_state.attributes.get("media_position_updated_at")
+
+            if position is None or duration is None or duration <= 0:
+                return
+
+            # Calculate actual current position
+            current_position = position
+            if position_updated_at:
+                time_diff = dt_util.utcnow() - position_updated_at
+                current_position = position + time_diff.total_seconds()
+
+            _LOGGER.debug(
+                "Xiaoai position check: current=%s, duration=%s, remaining=%s",
+                current_position, duration, duration - current_position
+            )
+
+            # If within 2 seconds of end, advance to next track
+            if current_position >= duration - 2:
+                _LOGGER.info("Song near end, advancing to next track")
+                self._advancing = True
+
+                if self._repeat == "one":
+                    await self._play_current_track()
+                elif self._playlist_index < len(self._playlist) - 1:
+                    self._playlist_index += 1
+                    await self._play_current_track()
+                elif self._repeat == "all":
+                    self._playlist_index = 0
+                    await self._play_current_track()
+                else:
+                    self._advancing = False
+
+        self._position_check_unsub = async_track_time_interval(
+            self.hass, check_position, timedelta(seconds=1)
         )
 
     @callback
@@ -239,7 +301,17 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         if not self._playlist or self._playlist_index >= len(self._playlist):
             self._advancing = False
             return
-        
+
+        # For Xiaoai speaker, stop current playback first to prevent looping
+        if self._is_xiaoai_speaker:
+            try:
+                await self.hass.services.async_call(
+                    "media_player", "media_stop", {"entity_id": self._target_player}
+                )
+                await asyncio.sleep(0.3)  # Brief pause to ensure stop completes
+            except Exception as e:
+                _LOGGER.debug("Failed to stop player before track change: %s", e)
+
         song = self._playlist[self._playlist_index]
         song_id = str(song.get("id"))
         source = song.get("platform", song.get("source", "netease"))

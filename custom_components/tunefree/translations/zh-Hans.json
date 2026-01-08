@@ -13,7 +13,11 @@
                 "description": "选择目标播放器和默认搜索渠道",
                 "data": {
                     "target_player": "目标媒体播放器",
-                    "default_source": "默认搜索渠道"
+                    "default_source": "默认搜索渠道",
+                    "is_xiaoai_speaker": "目标播放器是小爱音箱"
+                },
+                "data_description": {
+                    "is_xiaoai_speaker": "勾选后将启用播放进度监听切歌，解决小爱音箱循环播放问题"
                 }
             }
         },
@@ -37,7 +41,11 @@
                 "description": "配置播放器和搜索渠道",
                 "data": {
                     "target_player": "目标媒体播放器",
-                    "default_source": "默认搜索渠道"
+                    "default_source": "默认搜索渠道",
+                    "is_xiaoai_speaker": "目标播放器是小爱音箱"
+                },
+                "data_description": {
+                    "is_xiaoai_speaker": "勾选后将启用播放进度监听切歌，解决小爱音箱循环播放问题"
                 }
             },
             "import_playlist": {

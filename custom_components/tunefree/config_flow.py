@@ -13,11 +13,12 @@ from homeassistant.helpers.storage import Store
 from homeassistant.core import callback
 
 from .const import (
-    DOMAIN, 
-    CONF_API_URL, 
-    CONF_TARGET_PLAYER, 
+    DOMAIN,
+    CONF_API_URL,
+    CONF_TARGET_PLAYER,
     CONF_DEFAULT_SOURCE,
-    DEFAULT_API_URL, 
+    CONF_IS_XIAOAI_SPEAKER,
+    DEFAULT_API_URL,
     DEFAULT_SOURCE,
     SOURCES,
     PLAYLIST_SOURCES,
@@ -102,6 +103,7 @@ class TuneFreeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_API_URL: self._api_url,
                     CONF_TARGET_PLAYER: user_input.get(CONF_TARGET_PLAYER),
                     CONF_DEFAULT_SOURCE: user_input.get(CONF_DEFAULT_SOURCE, DEFAULT_SOURCE),
+                    CONF_IS_XIAOAI_SPEAKER: user_input.get(CONF_IS_XIAOAI_SPEAKER, False),
                 },
             )
 
@@ -121,8 +123,12 @@ class TuneFreeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    vol.Optional(CONF_IS_XIAOAI_SPEAKER, default=False): selector.BooleanSelector(),
                 }
             ),
+            description_placeholders={
+                "xiaoai_help": "如果目标播放器是小爱音箱，请勾选此选项以启用播放进度监听切歌"
+            },
         )
 
 
@@ -168,17 +174,19 @@ class TuneFreeOptionsFlow(config_entries.OptionsFlow):
             new_data = {**self._entry.data}
             new_data[CONF_TARGET_PLAYER] = user_input.get(CONF_TARGET_PLAYER)
             new_data[CONF_DEFAULT_SOURCE] = user_input.get(CONF_DEFAULT_SOURCE, DEFAULT_SOURCE)
-            
+            new_data[CONF_IS_XIAOAI_SPEAKER] = user_input.get(CONF_IS_XIAOAI_SPEAKER, False)
+
             self.hass.config_entries.async_update_entry(
                 self._entry, data=new_data
             )
-            
+
             await self.hass.config_entries.async_reload(self._entry.entry_id)
             return self.async_create_entry(title="", data={})
 
         current_player = self._entry.data.get(CONF_TARGET_PLAYER)
         current_source = self._entry.data.get(CONF_DEFAULT_SOURCE, DEFAULT_SOURCE)
-        
+        current_is_xiaoai = self._entry.data.get(CONF_IS_XIAOAI_SPEAKER, False)
+
         return self.async_show_form(
             step_id="settings",
             data_schema=vol.Schema(
@@ -201,8 +209,15 @@ class TuneFreeOptionsFlow(config_entries.OptionsFlow):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    vol.Optional(
+                        CONF_IS_XIAOAI_SPEAKER,
+                        default=current_is_xiaoai,
+                    ): selector.BooleanSelector(),
                 }
             ),
+            description_placeholders={
+                "xiaoai_help": "如果目标播放器是小爱音箱，请勾选此选项以启用播放进度监听切歌"
+            },
         )
 
     async def async_step_import_playlist(
