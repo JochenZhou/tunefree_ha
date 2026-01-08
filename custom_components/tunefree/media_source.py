@@ -28,10 +28,15 @@ SOURCE_NAMES = {
 
 async def async_get_media_source(hass: HomeAssistant) -> MediaSource:
     """Set up TuneFree media source."""
-    entry_data = next(iter(hass.data.get(DOMAIN, {}).values()), None)
-    if not entry_data:
-        return TuneFreeMediaSource(hass, None)
-    return TuneFreeMediaSource(hass, entry_data["api"])
+    # Find the first entry data that contains an API instance
+    # Skip non-dict values like "_static_registered": True
+    api = None
+    for key, value in hass.data.get(DOMAIN, {}).items():
+        if isinstance(value, dict) and "api" in value:
+            api = value["api"]
+            break
+    return TuneFreeMediaSource(hass, api)
+
 
 class TuneFreeMediaSource(MediaSource):
     """Provide TuneFree media source."""
@@ -194,8 +199,8 @@ class TuneFreeMediaSource(MediaSource):
         """Build songs for a top list."""
         songs = await self.api.get_toplist_songs(list_id, source)
         children = []
-        for song in songs:
-             children.append(self._create_song_item(song, source))
+        for idx, song in enumerate(songs):
+             children.append(self._create_song_item(song, source, "toplist", list_id, idx))
              
         return BrowseMediaSource(
             domain=DOMAIN,
@@ -226,8 +231,8 @@ class TuneFreeMediaSource(MediaSource):
         
         songs = playlist_data.get("list", [])
         children = []
-        for song in songs:
-             children.append(self._create_song_item(song, source))
+        for idx, song in enumerate(songs):
+             children.append(self._create_song_item(song, source, "playlist", playlist_id, idx))
         
         playlist_name = playlist_data.get("name", "播放列表")
         return BrowseMediaSource(
@@ -263,12 +268,17 @@ class TuneFreeMediaSource(MediaSource):
             children_media_class=MediaClass.MUSIC,
         )
 
-    def _create_song_item(self, song: dict, source: str) -> BrowseMediaSource:
+    def _create_song_item(self, song: dict, source: str, list_type: str = None, list_id: str = None, index: int = None) -> BrowseMediaSource:
         """Helper to create a song item."""
         song_id = str(song.get("id"))
         title = song.get("name", "未知歌曲")
         artists = song.get("artist", "")
-        identifier = f"{source}:{song_id}"
+        
+        # Use list-based identifier for playlist/toplist songs
+        if list_type and list_id is not None and index is not None:
+            identifier = f"{list_type}_song:{source}:{list_id}:{index}"
+        else:
+            identifier = f"{source}:{song_id}"
         
         # Try to get thumbnail
         thumbnail = song.get("pic")

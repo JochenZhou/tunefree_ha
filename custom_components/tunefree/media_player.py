@@ -1,6 +1,7 @@
 """Media Player platform for TuneFree."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -79,6 +80,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._last_state: str | None = None
         self._shuffle: bool = False
         self._repeat: str = "off"  # off, all, one
+        self._advancing: bool = False  # Prevent multiple auto-advance
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass."""
@@ -108,7 +110,9 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
             previous_state == "playing" 
             and current_state == "idle" 
             and self._playlist
+            and not self._advancing
         ):
+            self._advancing = True
             if self._repeat == "one":
                 # Repeat current track
                 self.hass.async_create_task(self._play_current_track())
@@ -119,6 +123,9 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
                 # Loop back to start
                 self._playlist_index = 0
                 self.hass.async_create_task(self._play_current_track())
+            else:
+                # Playlist finished, no repeat
+                self._advancing = False
         
         self.async_write_ha_state()
 
@@ -230,6 +237,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
     async def _play_current_track(self) -> None:
         """Play the current track in the playlist."""
         if not self._playlist or self._playlist_index >= len(self._playlist):
+            self._advancing = False
             return
         
         song = self._playlist[self._playlist_index]
@@ -242,15 +250,25 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._current_song_id = song_id
         self._current_source = source
         
-        # Get playback URL
+        # Get playback URL with retry
         url_endpoint = self._api.get_song_url_endpoint(song_id, source=source)
-        final_url = await self._api.resolve_song_redirect(url_endpoint)
+        final_url = None
+        for attempt in range(3):
+            final_url = await self._api.resolve_song_redirect(url_endpoint)
+            if final_url:
+                break
+            _LOGGER.warning("Attempt %d failed to get URL for song %s (%s)", attempt + 1, self._media_title, song_id)
+            if attempt < 2:
+                await asyncio.sleep(0.5)  # Wait before retry
         
         if not final_url:
+            _LOGGER.error("Failed to get URL for song %s (%s) after 3 attempts, skipping", self._media_title, song_id)
             # Try next track if this one fails
             if self._playlist_index < len(self._playlist) - 1:
                 self._playlist_index += 1
                 await self._play_current_track()
+            else:
+                self._advancing = False
             return
         
         self._media_content_id = f"media-source://tunefree/{source}:{song_id}"
@@ -282,6 +300,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
                 "extra": extra,
             },
         )
+        self._advancing = False
         self.async_write_ha_state()
 
     async def async_play_media(
@@ -388,6 +407,10 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
             
             _LOGGER.info("TuneFree: Voice search for '%s'", keyword)
             
+            # Clear existing playlist to prevent auto-advance to old playlist after single song finishes
+            self._playlist = []
+            self._playlist_index = 0
+            
             # Search and play first result
             songs = await self._api.search(keyword, search_type="aggregateSearch")
             if not songs:
@@ -436,9 +459,15 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
             return
         
         # Check if this is a TuneFree media source URI
-        # Format: media-source://tunefree/source:song_id
+        # Format: media-source://tunefree/source:song_id or media-source://tunefree/toplist_song:source:list_id:index
         if media_id.startswith("media-source://tunefree/"):
             identifier = media_id.replace("media-source://tunefree/", "")
+            
+            # Handle toplist_song and playlist_song formats from media browser
+            if identifier.startswith("toplist_song:") or identifier.startswith("playlist_song:"):
+                await self.async_play_media(media_type, identifier, **kwargs)
+                return
+            
             parts = identifier.split(":", 1)
             source = "netease"
             song_id = identifier

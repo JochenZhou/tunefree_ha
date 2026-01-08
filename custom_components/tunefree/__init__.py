@@ -13,6 +13,7 @@ from .const import DOMAIN, CONF_API_URL, CONF_DEFAULT_SOURCE, DEFAULT_SOURCE
 from .api import TuneFreeAPI
 
 from .coordinator import TuneFreeDataUpdateCoordinator
+from .intent import async_setup_intents
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,6 +111,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register Intent handlers for AI assistants
+    try:
+        await async_setup_intents(hass)
+    except Exception as e:
+        _LOGGER.warning("Could not register Intents: %s", e)
 
     # Get default source from config
     default_source = entry.data.get(CONF_DEFAULT_SOURCE, DEFAULT_SOURCE)

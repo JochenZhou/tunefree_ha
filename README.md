@@ -17,7 +17,11 @@ TuneFree_HA 是一个 Home Assistant 自定义集成，支持多平台音乐搜�
 
 ## 安装
 
-### HACS 安装（推荐）
+### HACS 一键安装（推荐）
+
+[![Open your Home Assistant instance and open TuneFree inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JochenZhou&repository=tunefree_ha&category=integration)
+
+### HACS 手动添加
 
 1. 在 HACS 中点击右上角菜单，选择「自定义存储库」
 2. 添加仓库地址：`https://github.com/JochenZhou/tunefree_ha`
