@@ -18,8 +18,11 @@ from .const import (
     CONF_TARGET_PLAYER,
     CONF_DEFAULT_SOURCE,
     CONF_IS_XIAOAI_SPEAKER,
+    CONF_SEARCH_LIMIT,
     DEFAULT_API_URL,
     DEFAULT_SOURCE,
+    DEFAULT_SEARCH_LIMIT,
+    MAX_SEARCH_LIMIT,
     SOURCES,
     PLAYLIST_SOURCES,
     STORAGE_KEY,
@@ -104,6 +107,7 @@ class TuneFreeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_TARGET_PLAYER: user_input.get(CONF_TARGET_PLAYER),
                     CONF_DEFAULT_SOURCE: user_input.get(CONF_DEFAULT_SOURCE, DEFAULT_SOURCE),
                     CONF_IS_XIAOAI_SPEAKER: user_input.get(CONF_IS_XIAOAI_SPEAKER, False),
+                    CONF_SEARCH_LIMIT: user_input.get(CONF_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT),
                 },
             )
 
@@ -124,6 +128,13 @@ class TuneFreeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
                     ),
                     vol.Optional(CONF_IS_XIAOAI_SPEAKER, default=False): selector.BooleanSelector(),
+                    vol.Optional(CONF_SEARCH_LIMIT, default=DEFAULT_SEARCH_LIMIT): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=MAX_SEARCH_LIMIT,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                 }
             ),
             description_placeholders={
@@ -175,6 +186,7 @@ class TuneFreeOptionsFlow(config_entries.OptionsFlow):
             new_data[CONF_TARGET_PLAYER] = user_input.get(CONF_TARGET_PLAYER)
             new_data[CONF_DEFAULT_SOURCE] = user_input.get(CONF_DEFAULT_SOURCE, DEFAULT_SOURCE)
             new_data[CONF_IS_XIAOAI_SPEAKER] = user_input.get(CONF_IS_XIAOAI_SPEAKER, False)
+            new_data[CONF_SEARCH_LIMIT] = user_input.get(CONF_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT)
 
             self.hass.config_entries.async_update_entry(
                 self._entry, data=new_data
@@ -186,6 +198,7 @@ class TuneFreeOptionsFlow(config_entries.OptionsFlow):
         current_player = self._entry.data.get(CONF_TARGET_PLAYER)
         current_source = self._entry.data.get(CONF_DEFAULT_SOURCE, DEFAULT_SOURCE)
         current_is_xiaoai = self._entry.data.get(CONF_IS_XIAOAI_SPEAKER, False)
+        current_search_limit = self._entry.data.get(CONF_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT)
 
         return self.async_show_form(
             step_id="settings",
@@ -213,6 +226,16 @@ class TuneFreeOptionsFlow(config_entries.OptionsFlow):
                         CONF_IS_XIAOAI_SPEAKER,
                         default=current_is_xiaoai,
                     ): selector.BooleanSelector(),
+                    vol.Optional(
+                        CONF_SEARCH_LIMIT,
+                        default=current_search_limit,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=MAX_SEARCH_LIMIT,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                 }
             ),
             description_placeholders={

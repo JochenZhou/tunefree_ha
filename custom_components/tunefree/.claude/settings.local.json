@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git remote set-url origin git@github.com:JochenZhou/tunefree_ha.git)"
+    ]
+  }
+}

@@ -14,10 +14,12 @@
                 "data": {
                     "target_player": "目标媒体播放器",
                     "default_source": "默认搜索渠道",
-                    "is_xiaoai_speaker": "目标播放器是小爱音箱"
+                    "is_xiaoai_speaker": "目标播放器是小爱音箱",
+                    "search_limit": "搜索歌曲数量"
                 },
                 "data_description": {
-                    "is_xiaoai_speaker": "勾选后将启用播放进度监听切歌，解决小爱音箱循环播放问题"
+                    "is_xiaoai_speaker": "勾选后将启用播放进度监听切歌，解决小爱音箱循环播放问题",
+                    "search_limit": "语音搜索时创建播放列表的歌曲数量（1-100首）"
                 }
             }
         },
@@ -42,10 +44,12 @@
                 "data": {
                     "target_player": "目标媒体播放器",
                     "default_source": "默认搜索渠道",
-                    "is_xiaoai_speaker": "目标播放器是小爱音箱"
+                    "is_xiaoai_speaker": "目标播放器是小爱音箱",
+                    "search_limit": "搜索歌曲数量"
                 },
                 "data_description": {
-                    "is_xiaoai_speaker": "勾选后将启用播放进度监听切歌，解决小爱音箱循环播放问题"
+                    "is_xiaoai_speaker": "勾选后将启用播放进度监听切歌，解决小爱音箱循环播放问题",
+                    "search_limit": "语音搜索时创建播放列表的歌曲数量（1-100首）"
                 }
             },
             "import_playlist": {

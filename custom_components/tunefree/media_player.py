@@ -20,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 
-from .const import DOMAIN, CONF_TARGET_PLAYER, CONF_IS_XIAOAI_SPEAKER
+from .const import DOMAIN, CONF_TARGET_PLAYER, CONF_IS_XIAOAI_SPEAKER, CONF_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT
 from .api import TuneFreeAPI
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,6 +59,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._api = api
         self._target_player = target_player
         self._is_xiaoai_speaker = entry.data.get(CONF_IS_XIAOAI_SPEAKER, False)
+        self._search_limit = int(entry.data.get(CONF_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT))
         self._attr_unique_id = f"{entry.entry_id}_media_player"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
@@ -287,6 +288,19 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
             attrs["source"] = self._current_source
         if self._lyrics:
             attrs["lyrics"] = self._lyrics
+
+        # Add current playlist details
+        if self._playlist:
+            attrs["playlist"] = [
+                {
+                    "name": song.get("name", "未知歌曲"),
+                    "artist": song.get("artist", ""),
+                    "id": str(song.get("id")),
+                    "source": song.get("source", song.get("platform", "netease")),
+                }
+                for song in self._playlist
+            ]
+
         return attrs
 
     async def set_playlist(self, songs: list[dict], start_index: int = 0) -> None:
@@ -379,15 +393,28 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self, media_type: MediaType | str, media_id: str, **kwargs: Any
     ) -> None:
         """Play media on the TuneFree player.
-        
+
         Supports:
+        - now_playing_song:index - Jump to song in current playlist
         - toplist:source:list_id - Play entire toplist as queue
         - media-source://tunefree/source:song_id - Direct song play
         - search:keyword - Search and play first result (voice assistant)
         - Any other URL - Forward to target player
         """
         _LOGGER.info("TuneFree Player: Playing media %s (type: %s)", media_id, media_type)
-        
+
+        # Handle now playing song - jump to specific song in current playlist
+        if media_id.startswith("now_playing_song:"):
+            try:
+                index = int(media_id.split(":")[1])
+                if 0 <= index < len(self._playlist):
+                    self._playlist_index = index
+                    await self._play_current_track()
+                    return
+            except (ValueError, IndexError):
+                _LOGGER.error("Invalid now_playing_song index: %s", media_id)
+                return
+
         # Handle toplist playback - play entire chart as queue
         if media_id.startswith("toplist:") and not media_id.startswith("toplist_song:"):
             parts = media_id.split(":")
@@ -478,56 +505,20 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
                 keyword = media_id[len("search:"):]
             
             _LOGGER.info("TuneFree: Voice search for '%s'", keyword)
-            
-            # Clear existing playlist to prevent auto-advance to old playlist after single song finishes
-            self._playlist = []
-            self._playlist_index = 0
-            
-            # Search and play first result
+
+            # Search and create playlist with configured limit
             songs = await self._api.search(keyword, search_type="aggregateSearch")
             if not songs:
                 _LOGGER.warning("No songs found for '%s'", keyword)
                 return
-            
-            song = songs[0]
-            song_id = str(song.get("id"))
-            source = song.get("platform", "netease")
-            
-            self._media_title = song.get("name", "未知歌曲")
-            self._media_artist = song.get("artist", "")
-            self._media_image_url = song.get("pic")
-            if not self._media_image_url:
-                self._media_image_url = f"{self._api._api_url}/api/?source={source}&id={song_id}&type=pic"
-            
-            # Get playback URL
-            url_endpoint = self._api.get_song_url_endpoint(song_id, source=source)
-            final_url = await self._api.resolve_song_redirect(url_endpoint)
-            
-            if not final_url:
-                _LOGGER.error("Could not resolve URL for song %s", song_id)
-                return
-            
-            self._media_content_id = f"media-source://tunefree/{source}:{song_id}"
-            
-            # Forward to target player with metadata
-            extra = {
-                "title": self._media_title,
-                "artist": self._media_artist,
-                "thumb": self._media_image_url,
-                "entity_picture": self._media_image_url,
-            }
-            
-            await self.hass.services.async_call(
-                "media_player",
-                "play_media",
-                {
-                    "entity_id": self._target_player,
-                    "media_content_id": final_url,
-                    "media_content_type": "music",
-                    "extra": extra,
-                },
-            )
-            self.async_write_ha_state()
+
+            # Take configured number of songs and create playlist
+            playlist_songs = songs[:self._search_limit]
+            for song in playlist_songs:
+                song["source"] = song.get("platform", "netease")
+
+            _LOGGER.info("TuneFree: Creating playlist with %d songs for '%s'", len(playlist_songs), keyword)
+            await self.set_playlist(playlist_songs)
             return
         
         # Check if this is a TuneFree media source URI
@@ -776,7 +767,22 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         # Root level - show TuneFree sources
         if media_content_id is None or media_content_id == "":
             saved_playlists = await load_saved_playlists()
-            children = [
+            children = []
+
+            # Add now playing if there's an active playlist
+            if self._playlist:
+                children.append(
+                    BrowseMedia(
+                        media_class=MediaClass.PLAYLIST,
+                        media_content_id="now_playing",
+                        media_content_type="",
+                        title=f"🎵 正在播放 ({len(self._playlist)}首)",
+                        can_play=False,
+                        can_expand=True,
+                    )
+                )
+
+            children.append(
                 BrowseMedia(
                     media_class=MediaClass.DIRECTORY,
                     media_content_id="toplists",
@@ -784,9 +790,9 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
                     title="🔥 热门榜单",
                     can_play=False,
                     can_expand=True,
-                ),
-            ]
-            
+                )
+            )
+
             # Add saved playlists folder if any exist
             if saved_playlists:
                 children.append(
@@ -799,7 +805,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
                         can_expand=True,
                     )
                 )
-            
+
             return BrowseMedia(
                 media_class=MediaClass.DIRECTORY,
                 media_content_id="",
@@ -810,7 +816,49 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
                 children_media_class=MediaClass.DIRECTORY,
                 children=children,
             )
-        
+
+        # Now playing - show current playlist
+        if media_content_id == "now_playing":
+            if not self._playlist:
+                return BrowseMedia(
+                    media_class=MediaClass.PLAYLIST,
+                    media_content_id="now_playing",
+                    media_content_type="",
+                    title="正在播放",
+                    can_play=False,
+                    can_expand=True,
+                    children=[],
+                )
+
+            children = []
+            for idx, song in enumerate(self._playlist):
+                # Highlight currently playing song
+                is_current = idx == self._playlist_index
+                title_prefix = "▶️ " if is_current else ""
+
+                children.append(
+                    BrowseMedia(
+                        media_class=MediaClass.MUSIC,
+                        media_content_id=f"now_playing_song:{idx}",
+                        media_content_type="audio/mpeg",
+                        title=f"{title_prefix}{song.get('name', '未知歌曲')} - {song.get('artist', '')}",
+                        can_play=True,
+                        can_expand=False,
+                        thumbnail=song.get("pic"),
+                    )
+                )
+
+            return BrowseMedia(
+                media_class=MediaClass.PLAYLIST,
+                media_content_id="now_playing",
+                media_content_type="",
+                title=f"正在播放 (第{self._playlist_index + 1}/{len(self._playlist)}首)",
+                can_play=False,
+                can_expand=True,
+                children_media_class=MediaClass.MUSIC,
+                children=children,
+            )
+
         # My playlists - show saved playlists
         if media_content_id == "my_playlists":
             saved_playlists = await load_saved_playlists()

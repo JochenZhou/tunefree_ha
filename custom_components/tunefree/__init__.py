@@ -77,24 +77,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except RuntimeError:
             pass  # Already registered
         
-        # Auto register lovelace resource
-        try:
-            from homeassistant.components.lovelace import DOMAIN as LOVELACE_DOMAIN
-            from homeassistant.components.lovelace.resources import ResourceStorageCollection
-
-            if LOVELACE_DOMAIN in hass.data:
-                lovelace = hass.data[LOVELACE_DOMAIN]
-                if hasattr(lovelace, "resources") and isinstance(lovelace.resources, ResourceStorageCollection):
-                    resources = lovelace.resources
-                    url = "/tunefree/tunefree-lyrics-card.js"
-                    # Check if already registered (exact match only)
-                    existing = [r for r in resources.async_items() if r.get("url") == url]
-                    if not existing:
-                        await resources.async_create_item({"url": url, "res_type": "module"})
-                        _LOGGER.info("TuneFree lyrics card resource registered")
-        except Exception as e:
-            _LOGGER.debug("Could not auto-register lovelace resource: %s", e)
-        
         hass.data[DOMAIN]["_static_registered"] = True
     
     session = async_get_clientsession(hass)

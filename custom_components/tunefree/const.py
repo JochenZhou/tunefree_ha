@@ -6,8 +6,11 @@ CONF_TARGET_PLAYER = "target_player"
 CONF_DEFAULT_SOURCE = "default_source"
 CONF_PLAYLISTS = "playlists"
 CONF_IS_XIAOAI_SPEAKER = "is_xiaoai_speaker"
+CONF_SEARCH_LIMIT = "search_limit"
 DEFAULT_API_URL = "https://music-dl.sayqz.com"
 DEFAULT_SOURCE = "netease"
+DEFAULT_SEARCH_LIMIT = 20
+MAX_SEARCH_LIMIT = 100
 STORAGE_KEY = f"{DOMAIN}_playlists"
 STORAGE_VERSION = 1
 
