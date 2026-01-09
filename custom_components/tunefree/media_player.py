@@ -20,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 
-from .const import DOMAIN, CONF_TARGET_PLAYER, CONF_IS_XIAOAI_SPEAKER, CONF_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT
+from .const import DOMAIN, CONF_TARGET_PLAYER, CONF_ENABLE_POSITION_MONITOR, CONF_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT
 from .api import TuneFreeAPI
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._entry = entry
         self._api = api
         self._target_player = target_player
-        self._is_xiaoai_speaker = entry.data.get(CONF_IS_XIAOAI_SPEAKER, False)
+        self._enable_position_monitor = entry.data.get(CONF_ENABLE_POSITION_MONITOR, False)
         self._search_limit = int(entry.data.get(CONF_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT))
         self._attr_unique_id = f"{entry.entry_id}_media_player"
         self._attr_device_info = DeviceInfo(
@@ -83,7 +83,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
         self._shuffle: bool = False
         self._repeat: str = "off"  # off, all, one
         self._advancing: bool = False  # Prevent multiple auto-advance
-        self._position_check_unsub = None  # Position check timer for Xiaoai
+        self._position_check_unsub = None  # Position check timer for auto-advance
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass."""
@@ -96,8 +96,8 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
             )
         )
 
-        # Start position monitoring for Xiaoai speaker
-        if self._is_xiaoai_speaker:
+        # Start position monitoring for players that don't auto-advance
+        if self._enable_position_monitor:
             self._start_position_monitoring()
 
     def _start_position_monitoring(self) -> None:
@@ -122,6 +122,13 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
             duration = target_state.attributes.get("media_duration")
             position_updated_at = target_state.attributes.get("media_position_updated_at")
 
+            # Convert to float to handle cases where the target player returns strings
+            try:
+                position = float(position) if position is not None else None
+                duration = float(duration) if duration is not None else None
+            except (ValueError, TypeError):
+                return
+
             if position is None or duration is None or duration <= 0:
                 return
 
@@ -132,7 +139,7 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
                 current_position = position + time_diff.total_seconds()
 
             _LOGGER.debug(
-                "Xiaoai position check: current=%s, duration=%s, remaining=%s",
+                "Position check: current=%s, duration=%s, remaining=%s",
                 current_position, duration, duration - current_position
             )
 
@@ -316,8 +323,8 @@ class TuneFreeMediaPlayer(MediaPlayerEntity):
             self._advancing = False
             return
 
-        # For Xiaoai speaker, stop current playback first to prevent looping
-        if self._is_xiaoai_speaker:
+        # For players that don't auto-advance, stop current playback first to prevent looping
+        if self._enable_position_monitor:
             try:
                 await self.hass.services.async_call(
                     "media_player", "media_stop", {"entity_id": self._target_player}

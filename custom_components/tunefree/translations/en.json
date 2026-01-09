@@ -13,7 +13,13 @@
                 "description": "Select target player and default search source",
                 "data": {
                     "target_player": "Target Media Player",
-                    "default_source": "Default Search Source"
+                    "default_source": "Default Search Source",
+                    "enable_position_monitor": "Player cannot auto-advance tracks",
+                    "search_limit": "Search result limit"
+                },
+                "data_description": {
+                    "enable_position_monitor": "Enable position monitoring to automatically advance to next track (for MPD, Xiaoai speakers, etc.)",
+                    "search_limit": "Number of songs in voice search playlist (1-100)"
                 }
             }
         },
@@ -37,7 +43,13 @@
                 "description": "Configure player and search source",
                 "data": {
                     "target_player": "Target Media Player",
-                    "default_source": "Default Search Source"
+                    "default_source": "Default Search Source",
+                    "enable_position_monitor": "Player cannot auto-advance tracks",
+                    "search_limit": "Search result limit"
+                },
+                "data_description": {
+                    "enable_position_monitor": "Enable position monitoring to automatically advance to next track (for MPD, Xiaoai speakers, etc.)",
+                    "search_limit": "Number of songs in voice search playlist (1-100)"
                 }
             },
             "import_playlist": {
