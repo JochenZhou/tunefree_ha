@@ -1,12 +1,14 @@
 {
   "domain": "tunefree",
   "name": "TuneFree",
-  "codeowners": ["@JochenZhou"],
+  "codeowners": [
+    "@JochenZhou"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/JochenZhou/tunefree_ha",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/JochenZhou/tunefree_ha/issues",
   "requirements": [],
-  "version": "2026.01.07"
+  "version": "2026.01.09"
 }
